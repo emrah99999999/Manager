@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سیستم مدیریت تولید</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#06070b;--bg2:#0a0b12;--surface:#10111a;--surface2:#171824;--surface3:#1e2030;--border:#252740;--accent:#f59e0b;--accent-dark:#b45309;--accent-glow:rgba(245,158,11,.12);--blue:#3b82f6;--green:#10b981;--green-dark:#065f46;--purple:#8b5cf6;--cyan:#06b6d4;--rose:#f43f5e;--text:#e8e8f0;--text2:#a0a4b8;--text3:#6b7280;--radius:12px;--radiusLg:16px}
+html{scroll-behavior:smooth}
+body{font-family:'Vazirmatn',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;direction:rtl;line-height:1.7;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(ellipse at 15% 15%,rgba(245,158,11,.04) 0%,transparent 50%),radial-gradient(ellipse at 85% 85%,rgba(59,130,246,.04) 0%,transparent 50%)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(245,158,11,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.012) 1px,transparent 1px);background-size:50px 50px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* LOGIN */
+#login-overlay{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:40px 36px;width:380px;max-width:90vw;text-align:center;animation:fadeIn .5s ease}
+.login-logo{font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--accent),#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.login-sub{font-size:.85rem;color:var(--text3);margin-bottom:28px}
+.login-input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;color:var(--text);font-family:inherit;font-size:1rem;text-align:center;direction:ltr;margin-bottom:16px;transition:border-color .25s}
+.login-input:focus{outline:none;border-color:var(--accent)}
+.login-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#d97706);color:#000;border:none;border-radius:8px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer;transition:all .25s}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(245,158,11,.3)}
+.login-error{color:var(--rose);font-size:.85rem;margin-top:12px;min-height:24px;animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+/* FILE BAR */
+.file-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.8rem;flex-wrap:wrap;gap:8px}
+.file-status{display:flex;align-items:center;gap:8px}
+.file-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.file-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.file-dot.err{background:var(--rose);box-shadow:0 0 6px var(--rose)}
+.file-dot.warn{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+.file-btns{display:flex;gap:6px}
+.btn-file{padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-family:inherit;font-size:.78rem;cursor:pointer;transition:all .2s}
+.btn-file:hover{border-color:var(--accent);color:var(--text)}
+
+/* APP CONTAINER */
+.container{max-width:1200px;margin:0 auto;padding:20px;position:relative;z-index:1}
+.view{display:none}.view.active{display:block;animation:fadeIn .4s ease forwards}
+@keyframes fadeIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+
+/* DASHBOARD */
+.dash-header{text-align:center;padding:32px 0 24px}
+.dash-title{font-size:2.4rem;font-weight:900;background:linear-gradient(135deg,var(--accent),#fbbf24,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+.dash-subtitle{font-size:.95rem;color:var(--text2);font-weight:300}
+.quick-stats{display:flex;justify-content:center;gap:20px;margin:20px 0;flex-wrap:wrap}
+.quick-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 24px;text-align:center;min-width:140px}
+.quick-stat-val{font-size:1.6rem;font-weight:800;color:var(--accent)}
+.quick-stat-lbl{font-size:.75rem;color:var(--text3);margin-top:2px}
+.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
+
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:28px 20px;cursor:pointer;transition:all .35s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;text-align:center;opacity:0;animation:cardIn .5s ease forwards}
+.dash-card:nth-child(1){animation-delay:.05s}.dash-card:nth-child(2){animation-delay:.1s}.dash-card:nth-child(3){animation-delay:.15s}.dash-card:nth-child(4){animation-delay:.2s}.dash-card:nth-child(5){animation-delay:.25s}.dash-card:nth-child(6){animation-delay:.3s}
+@keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.dash-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-color,var(--accent));opacity:0;transition:opacity .3s}
+.dash-card:hover{transform:translateY(-4px);border-color:var(--card-color,var(--accent));box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 20px var(--card-glow,rgba(245,158,11,.1))}
+.dash-card:hover::before{opacity:1}
+.dash-card.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.card-icon{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;background:var(--card-glow,rgba(245,158,11,.1))}
+.card-icon svg{width:26px;height:26px;stroke:var(--card-color,var(--accent));fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card-title{font-size:1.05rem;font-weight:700;margin-bottom:6px}
+.card-desc{font-size:.78rem;color:var(--text3);line-height:1.6}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.page-title{font-size:1.5rem;font-weight:800}
+.btn-back{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:500;transition:all .25s}
+.btn-back:hover{background:var(--surface3);color:var(--text);border-color:var(--accent)}
+.btn-back svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transform:scaleX(-1)}
+
+/* FORMS */
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:30px;max-width:720px;margin:0 auto}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:.82rem;font-weight:600;color:var(--text2)}
+.form-input{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:inherit;font-size:.92rem;transition:all .25s;direction:rtl}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.form-input::placeholder{color:var(--text3)}
+.form-input[readonly]{background:var(--surface2);color:var(--text2);cursor:not-allowed}
+.form-input.auto{background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.2)}
+.form-actions{margin-top:24px;display:flex;justify-content:center;gap:12px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 26px;border-radius:10px;font-family:inherit;font-size:.92rem;font-weight:600;cursor:pointer;transition:all .3s cubic-bezier(.22,1,.36,1);border:none}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#d97706);color:#000}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(245,158,11,.3)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--surface3);border-color:var(--text3)}
+.btn-success{background:linear-gradient(135deg,var(--green),#059669);color:#fff}
+.btn-success:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(16,185,129,.3)}
+.btn-sm{padding:8px 16px;font-size:.85rem}
+
+/* TABLES */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+thead{background:var(--surface2)}
+th{padding:13px 14px;text-align:right;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border)}
+tr:hover{background:var(--surface2)}tr:last-child td{border-bottom:none}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;text-align:center}
+.stat-val{font-size:1.5rem;font-weight:800;margin-bottom:2px}
+.stat-lbl{font-size:.75rem;color:var(--text3)}
+.s-accent{color:var(--accent)}.s-green{color:var(--green)}.s-blue{color:var(--blue)}.s-rose{color:var(--rose)}.s-purple{color:var(--purple)}.s-cyan{color:var(--cyan)}
+.charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:20px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:22px}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:.95rem;font-weight:700;margin-bottom:14px}
+.chart-wrap{position:relative;height:260px}
+
+/* SEARCH */
+.search-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:22px;margin-bottom:22px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.search-box .form-group{flex:1;min-width:170px}
+
+/* BADGE */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.73rem;font-weight:600}
+.badge-active{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-completed{background:rgba(107,114,128,.15);color:var(--text3)}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);padding:13px 26px;border-radius:12px;font-family:'Vazirmatn',sans-serif;font-size:.92rem;font-weight:600;z-index:100000;transition:transform .4s cubic-bezier(.22,1,.36,1);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast-success{background:linear-gradient(135deg,#065f46,#064e3b);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+.toast-error{background:linear-gradient(135deg,#7f1d1d,#991b1b);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.toast-info{background:linear-gradient(135deg,#1e3a5f,#1e40af);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+
+/* PROGRESS */
+.progress-bg{background:var(--bg2);border-radius:10px;height:12px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--accent),#fbbf24);transition:width .5s ease}
+
+/* INFO BOX */
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:22px;margin-bottom:20px}
+.info-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--text2);font-weight:500}.info-val{font-weight:700}
+
+/* DEVIATION */
+.dev-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiusLg);padding:20px;margin-top:18px}
+.dev-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.9rem}
+.dev-row:last-child{border-bottom:none}
+.dev-ok{color:var(--green);font-weight:700}.dev-warn{color:var(--accent);font-weight:700}.dev-alert{color:var(--rose);font-weight:700}
+.alert-box{padding:12px 18px;border-radius:10px;margin-top:12px;font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:8px}
+.alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
+.alert-danger{background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--rose)}
+.alert-ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:var(--text3)}
+.empty svg{width:60px;height:60px;stroke:var(--border);margin-bottom:14px;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* RESPONSIVE */
+@media(max-width:992px){.dash-grid{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(2,1fr)}.charts-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.dash-grid{grid-template-columns:1fr}.dash-title{font-size:1.7rem}.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.search-box{flex-direction:column}.page-header{flex-direction:column;gap:10px;align-items:flex-start}.info-row{flex-direction:column;gap:3px}.file-bar{flex-direction:column;text-align:center}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-overlay">
+<div class="login-card">
+<div class="login-logo">سیستم مدیریت تولید</div>
+<div class="login-sub">لطفاً رمز عبور را وارد کنید</div>
+<input class="login-input" type="password" id="login-pwd" placeholder="رمز عبور" autocomplete="off">
+<button class="login-btn" onclick="doLogin()">ورود</button>
+<div class="login-error" id="login-err"></div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="app-root" style="display:none">
+
+<!-- FILE BAR -->
+<div class="file-bar">
+<div class="file-status">
+<div class="file-dot" id="fd-dot"></div>
+<span id="fd-text">بررسی فایل داده...</span>
+</div>
+<div class="file-btns">
+<button class="btn-file" onclick="exportFile()">خروجی فایل (.pmdb)</button>
+<button class="btn-file" onclick="importFile()">بارگذاری فایل</button>
+<button class="btn-file" id="btn-fsave" onclick="openSavePicker()" style="display:none">ذخیره در فایل</button>
+<button class="btn-file" id="btn-fopen" onclick="openFilePicker()" style="display:none">باز کردن فایل</button>
+<input type="file" id="import-input" accept=".pmdb" style="display:none">
+</div>
+</div>
+
+<div class="container">
+
+<!-- DASHBOARD -->
+<section id="v-dash" class="view active">
+<div class="dash-header">
+<h1 class="dash-title">سیستم مدیریت تولید</h1>
+<p class="dash-subtitle">مدیریت هوشمند سفارشات و آمار تولید</p>
+</div>
+<div class="quick-stats" id="quick-stats"></div>
+<div class="dash-grid" id="dash-grid">
+<div class="dash-card" data-access="admin" style="--card-color:#f59e0b;--card-glow:rgba(245,158,11,.12)" onclick="showView('v-new-order')">
+<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg></div>
+<div class="card-title">ثبت سفارش جدید</div><div class="card-desc">ایجاد سفارش تولید جدید با جزئیات کامل</div>
+</div>
+<div class="dash-card" data-access="admin" style="--card-color:#3b82f6;--card-glow:rgba(59,130,246,.12)" onclick="showView('v-edit-order')">
+<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+<div class="card-title">ویرایش سفارش</div><div class="card-desc">مشاهده و ویرایش سفارشات ثبت شده</div>
+</div>
+<div class="dash-card" data-access="admin" style="--card-color:#10b981;--card-glow:rgba(16,185,129,.12)" onclick="showView('v-reg-prod')">
+<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+<div class="card-title">ثبت آمار تولید</div><div class="card-desc">ثبت اطلاعات تولید روزانه دستگاه‌ها</div>
+</div>
+<div class="dash-card" data-access="admin" style="--card-color:#8b5cf6;--card-glow:rgba(139,92,246,.12)" onclick="showView('v-edit-prod')">
+<div class="card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+<div class="card-title">ویرایش آمار تولید</div><div class="card-desc">ویرایش اطلاعات تولید ثبت شده قبلی</div>
+</div>
+<div class="dash-card" style="--card-color:#06b6d4;--card-glow:rgba(6,182,212,.12)" onclick="showView('v-cur-stats')">
+<div class="card-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+<div class="card-title">آمار جاری</div><div class="card-desc">آمار و نمودار سفارشات در حال تولید</div>
+</div>
+<div class="dash-card" style="--card-color:#f43f5e;--card-glow:rgba(244,63,94,.12)" onclick="showView('v-past-stats')">
+<div class="card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+<div class="card-title">آمار گذشته</div><div class="card-desc">بررسی و تحلیل سفارشات تکمیل شده</div>
+</div>
+</div>
+</section>
+
+<!-- NEW ORDER -->
+<section id="v-new-order" class="view">
+<div class="page-header"><h2 class="page-title">ثبت سفارش جدید</h2><button class="btn-back" onclick="goHome()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>بازگشت</button></div>
+<div class="form-card">
+<div class="form-grid">
+<div class="form-group"><label class="form-label">شماره دستگاه *</label><input class="form-input" type="number" id="no-machine" placeholder="مثال: ۵" min="1"></div>
+<div class="form-group"><label class="form-label">نام سفارش *</label><input class="form-input" type="text" id="no-name" placeholder="نام سفارش"></div>
+<div class="form-group"><label class="form-label">تعداد کل سفارش *</label><input class="form-input" type="number" id="no-total" placeholder="تعداد کل" min="1"></div>
+<div class="form-group"><label class="form-label">تعداد طاقه *</label><input class="form-input" type="number" id="no-rolls" placeholder="تعداد طاقه" min="1"></div>
+<div class="form-group"><label class="form-label">تعداد حوله در هر طاقه *</label><input class="form-input" type="number" id="no-tpr" placeholder="حوله در طاقه" min="1" oninput="calcRollWeight()"></div>
+<div class="form-group"><label class="form-label">وزن یک عدد حوله (گرم) *</label><input class="form-input" type="number" id="no-weight" placeholder="وزن حوله" min="0.01" step="0.01" oninput="calcRollWeight()"></div>
+<div class="form-group"><label class="form-label">عرض (سانتی‌متر) *</label><input class="form-input" type="number" id="no-width" placeholder="عرض" min="1"></div>
+<div class="form-group"><label class="form-label">طول (سانتی‌متر) *</label><input class="form-input" type="number" id="no-length" placeholder="طول" min="1"></div>
+<div class="form-group"><label class="form-label">وزن یک طاقه (گرم) — خودکار</label><input class="form-input auto" type="text" id="no-rollwt" readonly></div>
+<div class="form-group"><label class="form-label">تاریخ ثبت</label><input class="form-input" type="text" id="no-date" readonly></div>
+</div>
+<div class="form-actions"><button class="btn btn-primary" onclick="submitNewOrder()">ثبت نهایی سفارش</button><button class="btn btn-secondary" onclick="goHome()">انصراف</button></div>
+</div>
+</section>
+
+<!-- EDIT ORDER -->
+<section id="v-edit-order" class="view">
+<div class="page-header"><h2 class="page-title">ویرایش سفارش</h2><button class="btn-back" onclick="goHome()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>بازگشت</button></div>
+<div id="edit-order-list"></div>
+</section>
+
+<!-- EDIT ORDER FORM -->
+<section id="v-edit-order-form" class="view">
+<div class="page-header"><h2 class="page-title">ویرایش اطلاعات سفارش</h2><button class="btn-back" onclick="showView('v-edit-order')"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>بازگشت</button></div>
+<div class="form-card">
+<div class="form-grid">
+<input type="hidden" id="eo-id">
+<div class="form-group"><label class="form-label">شماره دستگاه *</label><input class="form-input" type="number" id="eo-machine" min="1"></div>
+<div class="form-group"><label class="form-label">نام سفارش *</label><input class="form-input" type="text" id="eo-name"></div>
+<div class="form-group"><label class="form-label">تعداد کل سفارش *</label><input class="form-input" type="number" id="eo-total" min="1"></div>
+<div class="form-group"><label class="form-label">تعداد طاقه *</label><input class="form-input" type="number" id="eo-rolls" min="1"></div>
+<div class="form-group"><label class="form-label">تعداد حوله در طاقه *</label><input class="form-input" type="number" id="eo-tpr" min="1" oninput="calcRollWeightEdit()"></div>
+<div class="form-group"><label class="form-label">وزن یک عدد حوله (گرم) *</label><input class="form-input" type="number" id="eo-weight" min="0.01" step="0.01" oninput="calcRollWeightEdit()"></div>
+<div class="form-group"><label class="form-label">عرض (سانتی‌متر) *</label><input class="form-input" type="number" id="eo-width" min="1"></div>
+<div class="form-group"><label class="form-label">طول (سانتی‌متر) *</label><input class="form-input" type="number" id="eo-length" min="1"></div>
+<div class="form-group"><label class="form-label">وزن طاقه (گرم) — خودکار</label><input class="form-input auto" type="text" id="eo-rollwt" readonly></div>
+<div class="form-group"><label class="form-label">تاریخ</label><input class="form-input" type="text" id="eo-date" readonly></div>
+<div class="form-group"><label class="form-label">وضعیت</label><select class="form-input" id="eo-status"><option value="active">در حال تولید</option><option value="completed">تکمیل شده</option></select></div>
+</div>
+<div class="form-actions"><button class="btn btn-primary" onclick="submitEditOrder()">ثبت تغییرات</button><button class="btn btn-secondary" onclick="showView('v-edit-order')">انصراف</button></div>
+</div>
+</section>
+
+<!-- REGISTER PRODUCTION -->
+<section id="v-reg-prod" class="view">
+<div class="page-header"><h2 class="page-title">ثبت آمار تولید</h2><button class="btn-back" onclick="goHome()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>بازگشت</button></div>
+<div class="form-card">
+<div class="form-grid">
+<div class="form-group full"><label class="form-label">شماره دستگاه *</label><input class="form-input" type="number" id="rp-machine" placeholder="شماره دستگاه را وارد کنید" min="1" oninput="lookupMachine()"></div>
+</div>
+<div id="rp-order-info" style="display:none;margin-top:18px">
+<div class="info-box">
+<h3 style="margin-bottom:10px;font-weight:700;font-size:.95rem">اطلاعات سفارش</h3>
+<div class="info-row"><span class="info-key">نام سفارش</span><span class="info-val" id="rp-name">-</span></div>
+<div class="info-row"><span class="info-key">عرض حوله</span><span class="info-val" id="rp-width">-</span></div>
+<div class="info-row"><span class="info-key">طول حوله</span><span class="info-val" id="rp-length">-</span></div>
+<div class="info-row"><span class="info-key">وزن استاندارد حوله</span><span class="info-val" id="rp-weight">-</span></div>
+<div class="info-row"><span class="info-key">حوله در طاقه</span><span class="info-val" id="rp-tpr">-</span></div>
+<div class="info-row"><span class="info-key">وزن استاندارد طاقه</span><span class="info-val" id="rp-rollwt">-</span></div>
+<div class="info-row"><span class="info-key">تعداد طاقه سفارش</span><span class="info-val" id="rp-total-rolls">-</span></div>
+<div class="info-row"><span class="info-key">طاقه بافته شده</span><span class="info-val s-green" id="rp-produced">-</span></div>
+<div class="info-row"><span class="info-key">طاقه مانده</span><span class="info-val s-rose" id="rp-remaining">-</span></div>
+</div>
+<div class="form-grid" style="margin-top:14px">
+<div class="form-group"><label class="form-label">تعداد طاقه بافته شده (جدید) *</label><input class="form-input" type="number" id="rp-new-rolls" placeholder="تعداد طاقه جدید" min="1"></div>
+<div class="form-group"><label class="form-label">وزن طاقه بافته شده (گرم) *</label><input class="form-input" type="number" id="rp-roll-weight" placeholder="وزن واقعی طاقه" min="0.01" step="0.01" oninput="calcProdDeviation()"></div>
+<div class="form-group"><label class="form-label">تعداد حوله در طاقه *</label><input class="form-input" type="number" id="rp-towels-in-roll" placeholder="تعداد حوله" min="1" oninput="calcProdDeviation()"></div>
+<div class="form-group"><label class="form-label">تاریخ</label><input class="form-input" type="text" id="rp-date" readonly></div>
+</div>
+<div class="dev-panel" id="rp-dev-panel" style="display:none">
+<h4 style="margin-bottom:10px;font-weight:700;font-size:.9rem">تحلیل انحراف وزن</h4>
+<div class="dev-row"><span>وزن واقعی یک حوله</span><span id="rp-actual-wt">-</span></div>
+<div class="dev-row"><span>وزن استاندارد حوله</span><span id="rp-std-wt">-</span></div>
+<div class="dev-row"><span>میزان انحراف</span><span id="rp-dev-val">-</span></div>
+<div class="dev-row"><span>درصد انحراف</span><span id="rp-dev-pct">-</span></div>
+<div id="rp-dev-alert"></div>
+</div>
+<div class="form-actions"><button class="btn btn-success" onclick="submitProduction()">ثبت نهایی تولید</button><button class="btn btn-secondary" onclick="goHome()">انصراف</button></div>
+</div>
+<div id="rp-no-order" style="display:none;margin-top:18px">
+<div class="empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>هیچ سفارش فعالی برای این دستگاه ثبت نشده است.</p><p style="margin-top:6px;font-size:.82rem">ابتدا از بخش «ثبت سفارش جدید» سفارشی برای این دستگاه ثبت کنید.</p></div>
+</div>
+</div>
+</section>
+
+<!-- EDIT PRODUCTION -->
+<section id="v-edit-prod" class="view">
+<div class="page-header"><h2 class="page-title">ویرایش آمار تولید</h2><button class="btn-back" onclick="goHome()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>بازگشت</button></div>
+<div class="search-box">
+<div class="form-group"><label class="form-label">شماره دستگاه</label><input class="form-input" type="number" id="ep-machine" min="1"></div>
+<div class="form-group"><label class="form-label">نام سفارش</label><input class="form-input" type="text" id="ep-name"></div>
+<button class="btn btn-primary btn-sm" onclick="searchProduction()">جستجو</button>
+</div>
+<div id="ep-results"></div>
+</section>
+
+<!-- EDIT PRODUCTION FORM -->
+<section id="v-edit-prod-form" class="view">
+<div class="page-header"><h2 class="page-title">ویرایش رکورد تولید</h2><button class="btn-back" onclick="showView('v-edit-prod')"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>بازگشت</button></div>
+<div class="form-card">
+<div class="form-grid">
+<input type="hidden" id="epf-id"><input type="hidden" id="epf-order-id">
+<div class="form-group"><label class="form-label">شماره دستگاه</label><input class="form-input" type="text" id="epf-machine" readonly></div>
+<div class="form-group"><label class="form-label">نام سفارش</label><input class="form-input" type="text" id="epf-order-name" readonly></div>
+<div class="form-group"><label class="form-label">تاریخ</label><input class="form-input" type="text" id="epf-date" readonly></div>
+<div class="form-group"><label class="form-label">تعداد طاقه *</label><input class="form-input" type="number" id="epf-rolls" min="0"></div>
+<div class="form-group"><label class="form-label">وزن طاقه (گرم) *</label><input class="form-input" type="number" id="epf-rollwt" min="0.01" step="0.01" oninput="calcEditProdDev()"></div>
+<div class="form-group"><label class="form-label">تعداد حوله در طاقه *</label><input class="form-input" type="number" id="epf-towels" min="1" oninput="calcEditProdDev()"></div>
+</div>
+<div class="dev-panel" id="epf-dev-panel" style="display:none;margin-top:16px">
+<h4 style="margin-bottom:8px;font-weight:700;font-size:.9rem">تحلیل انحراف وزن</h4>
+<div class="dev-row"><span>وزن واقعی حوله</span><span id="epf-actual-wt">-</span></div>
+<div class="dev-row"><span>انحراف از استاندارد</span><span id="epf-dev-val">-</span></div>
+<div class="dev-row"><span>درصد انحراف</span><span id="epf-dev-pct">-</span></div>
+<div id="epf-dev-alert"></div>
+</div>
+<div class="form-actions"><button class="btn btn-primary" onclick="submitEditProduction()">ثبت تغییرات</button><button class="btn btn-secondary" onclick="showView('v-edit-prod')">انصراف</button></div>
+</div>
+</section>
+
+<!-- CURRENT STATS -->
+<section id="v-cur-stats" class="view">
+<div class="page-header"><h2 class="page-title">آمار سفارشات جاری</h2><button class="btn-back" onclick="goHome()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>خروج</button></div>
+<div class="search-box">
+<div class="form-group"><label class="form-label">شماره دستگاه</label><input class="form-input" type="number" id="cs-machine" min="1"></div>
+<button class="btn btn-primary btn-sm" onclick="showCurrentStats()">نمایش آمار</button>
+</div>
+<div id="cs-content"></div>
+</section>
+
+<!-- PAST STATS -->
+<section id="v-past-stats" class="view">
+<div class="page-header"><h2 class="page-title">آمار گذشته</h2><button class="btn-back" onclick="goHome()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>خروج</button></div>
+<div class="search-box">
+<div class="form-group"><label class="form-label">نام سفارش</label><input class="form-input" type="text" id="ps-name"></div>
+<div class="form-group"><label class="form-label">شماره دستگاه</label><input class="form-input" type="number" id="ps-machine" min="1"></div>
+<button class="btn btn-primary btn-sm" onclick="searchPastStats()">جستجو</button>
+</div>
+<div id="ps-results"></div>
+</section>
+
+</div><!-- container -->
+</div><!-- app-root -->
+
+<script>
+/* ===================== CONFIG ===================== */
+var A_PWD=atob('MDkzNTg5OTE1MzE='),V_PWD=atob('MTExMTExMTE='),userRole=null;
+var STORE_KEY='pmdb_v2',HANDLE_DB='PM_FileHandles',HANDLE_KEY='mainFile';
+var APP_ENC_KEY='PMDB_ProductionManager_2024_AES';
+var DEVIATION_WARN=3,DEVIATION_ALERT=5;
+
+/* ===================== AUTH ===================== */
+function doLogin(){
+    var p=document.getElementById('login-pwd').value;
+    var err=document.getElementById('login-err');
+    if(p===A_PWD){userRole='admin';loginSuccess()}
+    else if(p===V_PWD){userRole='viewer';loginSuccess()}
+    else{err.textContent='رمز عبور اشتباه است';document.getElementById('login-pwd').value='';document.getElementById('login-pwd').classList.add('login-error');setTimeout(function(){document.getElementById('login-pwd').classList.remove('login-error')},500)}
+}
+function loginSuccess(){
+    sessionStorage.setItem('pm_role',userRole);
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('app-root').style.display='block';
+    applyAccess();renderDashboard();initFileStorage();
+}
+function applyAccess(){
+    document.querySelectorAll('[data-access="admin"]').forEach(function(el){
+        if(userRole!=='admin'){el.classList.add('disabled')}
+        else{el.classList.remove('disabled')}
+    });
+    if(userRole==='viewer'){document.querySelector('.file-bar').style.display='none'}
+}
+document.getElementById('login-pwd').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
+
+/* ===================== BINARY FILE MANAGER ===================== */
+var encKeyPromise=null;
+function getEncKey(){
+    if(encKeyPromise)return encKeyPromise;
+    encKeyPromise=(async function(){
+        var enc=new TextEncoder();
+        var km=await crypto.subtle.importKey('raw',enc.encode(APP_ENC_KEY),'PBKDF2',false,['deriveKey']);
+        return crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode('PMDB_SALT_2024'),iterations:50000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+    })();
+    return encKeyPromise;
+}
+async function encryptData(obj){
+    var enc=new TextEncoder();
+    var key=await getEncKey();
+    var iv=crypto.getRandomValues(new Uint8Array(12));
+    var ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,enc.encode(JSON.stringify(obj)));
+    var result=new Uint8Array(4+12+new Uint8Array(ct).length);
+    result.set([0x50,0x4D,0x44,0x42],0);result.set(iv,4);result.set(new Uint8Array(ct),16);
+    return result.buffer;
+}
+async function decryptData(buf){
+    var arr=new Uint8Array(buf);
+    if(arr[0]!==0x50||arr[1]!==0x4D||arr[2]!==0x44||arr[3]!==0x42)throw new Error('bad format');
+    var iv=arr.slice(4,16),ct=arr.slice(16);
+    var key=await getEncKey();
+    var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+    return JSON.parse(new TextDecoder().decode(pt));
+}
+
+var fileHandle=null,fileReady=false;
+function setFileDot(s){var d=document.getElementById('fd-dot');d.className='file-dot '+s}
+function setFileText(t){document.getElementById('fd-text').textContent=t}
+
+async function initFileStorage(){
+    if(window.showOpenFilePicker){document.getElementById('btn-fsave').style.display='';document.getElementById('btn-fopen').style.display=''}
+    try{
+        var handle=await loadHandleFromDB();
+        if(handle){
+            var perm=await handle.queryPermission({mode:'readwrite'});
+            if(perm==='granted'){fileHandle=handle;await loadFromFile();return}
+            perm=await handle.requestPermission({mode:'readwrite'});
+            if(perm==='granted'){fileHandle=handle;await loadFromFile();return}
+        }
+    }catch(e){console.log('File handle restore failed:',e)}
+    loadFromLocalStorage();
+}
+function loadFromLocalStorage(){
+    try{var d=localStorage.getItem(STORE_KEY);if(d){var obj=JSON.parse(d);applyData(obj);setFileDot('ok');setFileText('داده از حافظه محلی بارگذاری شد')}else{setFileDot('warn');setFileText('داده‌ای یافت نشد — شروع جدید')}}catch(e){setFileDot('err');setFileText('خطا در بارگذاری')}
+}
+async function loadFromFile(){
+    try{
+        var f=await fileHandle.getFile();var buf=await f.arrayBuffer();
+        if(buf.byteLength<16){loadFromLocalStorage();return}
+        var obj=await decryptData(buf);applyData(obj);
+        setFileDot('ok');setFileText('فایل داده بارگذاری شد: '+fileHandle.name);fileReady=true;
+    }catch(e){console.log('File load err:',e);loadFromLocalStorage()}
+}
+async function saveToFile(){
+    if(!fileHandle||!fileReady)return false;
+    try{
+        var data=getCurrentData();var buf=await encryptData(data);
+        var w=await fileHandle.createWritable();await w.write(buf);await w.close();
+        setFileDot('ok');return true;
+    }catch(e){console.log('File save err:',e);setFileDot('err');return false}
+}
+function saveToLocalStorage(){
+    try{var d=getCurrentData();localStorage.setItem(STORE_KEY,JSON.stringify(d))}catch(e){console.log('LS save err:',e)}
+}
+async function autoSave(){
+    saveToLocalStorage();
+    if(fileHandle&&fileReady){await saveToFile();setFileText('ذخیره شد: '+fileHandle.name+' — '+new Date().toLocaleTimeString('fa-IR'))}
+    else{setFileText('ذخیره در حافظه محلی — '+new Date().toLocaleTimeString('fa-IR'))}
+}
+function getCurrentData(){return{orders:getOrders(),productions:getProductions()}}
+function applyData(obj){
+    if(obj.orders)saveOrders(obj.orders);if(obj.productions)saveProductions(obj.productions);
+}
+
+async function openFilePicker(){
+    if(!window.showOpenFilePicker)return;
+    try{
+        var [h]=await window.showOpenFilePicker({types:[{description:'فایل داده تولید',accept:{'application/octet-stream':['.pmdb']}}]});
+        fileHandle=h;await saveHandleToDB(h);await loadFromFile();
+    }catch(e){if(e.name!=='AbortError')console.log(e)}
+}
+async function openSavePicker(){
+    if(!window.showSaveFilePicker)return;
+    try{
+        fileHandle=await window.showSaveFilePicker({suggestedName:'production_data.pmdb',types:[{description:'فایل داده تولید',accept:{'application/octet-stream':['.pmdb']}}]});
+        await saveHandleToDB(fileHandle);fileReady=true;await saveToFile();
+        setFileText('فایل جدید ذخیره شد: '+fileHandle.name);
+    }catch(e){if(e.name!=='AbortError')console.log(e)}
+}
+function exportFile(){
+    encryptData(getCurrentData()).then(function(buf){
+        var blob=new Blob([buf],{type:'application/octet-stream'});
+        var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+        a.download='production_data_'+todayJStr().replace(/\//g,'-')+'.pmdb';
+        a.click();URL.revokeObjectURL(a.href);showToast('فایل خروجی ایجاد شد','success');
+    });
+}
+function importFile(){document.getElementById('import-input').click()}
+document.getElementById('import-input').addEventListener('change',async function(e){
+    var f=e.target.files[0];if(!f)return;
+    try{var buf=await f.arrayBuffer();var obj=await decryptData(buf);applyData(obj);await autoSave();
+    showToast('داده با موفقیت بارگذاری شد','success');renderDashboard()}catch(err){showToast('خطا: فایل نامعتبر یا خراب است','error')}
+    e.target.value='';
+});
+function saveHandleToDB(h){return new Promise(function(res){var r=indexedDB.open(HANDLE_DB,1);r.onupgradeneeded=function(e){e.target.result.createObjectStore('handles')};r.onsuccess=function(e){var db=e.target.result;var tx=db.transaction('handles','readwrite');tx.objectStore('handles').put(h,HANDLE_KEY);tx.oncomplete=res}})}
+function loadHandleFromDB(){return new Promise(function(res){var r=indexedDB.open(HANDLE_DB,1);r.onupgradeneeded=function(e){e.target.result.createObjectStore('handles')};r.onsuccess=function(e){var db=e.target.result;var tx=db.transaction('handles','readonly');var q=tx.objectStore('handles').get(HANDLE_KEY);q.onsuccess=function(){res(q.result||null)};q.onerror=function(){res(null)}}})}
+
+/* ===================== DATA LAYER ===================== */
+function getOrders(){try{return JSON.parse(localStorage.getItem('pm_orders')||'[]')}catch(e){return[]}}
+function saveOrders(o){localStorage.setItem('pm_orders',JSON.stringify(o))}
+function getProductions(){try{return JSON.parse(localStorage.getItem('pm_prods')||'[]')}catch(e){return[]}}
+function saveProductions(p){localStorage.setItem('pm_prods',JSON.stringify(p))}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).substr(2,6)}
+
+/* ===================== JALALI ===================== */
+function gToJ(gy,gm,gd){var g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];var gy2=gm>2?gy+1:gy;var days=355666+(365*gy)+Math.floor((gy2+3)/4)-Math.floor((gy2+99)/100)+Math.floor((gy2+399)/400)+gd+g_d_m[gm-1];var jy=-1595+33*Math.floor(days/12053);days%=12053;jy+=4*Math.floor(days/1461);days%=1461;if(days>365){jy+=Math.floor((days-1)/365);days=(days-1)%365}var jm,jd;if(days<186){jm=1+Math.floor(days/31);jd=1+(days%31)}else{jm=7+Math.floor((days-186)/30);jd=1+((days-186)%30)}return[jy,jm,jd]}
+function todayJStr(){var n=new Date();var j=gToJ(n.getFullYear(),n.getMonth()+1,n.getDate());return j[0]+'/'+String(j[1]).padStart(2,'0')+'/'+String(j[2]).padStart(2,'0')}
+var JMONTHS=['','فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function fmtJDate(s){if(!s)return'-';var p=s.split('/');return parseInt(p[2])+' '+JMONTHS[parseInt(p[1])]+' '+p[0]}
+function fmtNum(n){return n==null?'-':Number(n).toLocaleString('fa-IR')}
+
+/* ===================== UI HELPERS ===================== */
+function showView(id){
+    if(userRole==='viewer'&&['v-new-order','v-edit-order','v-edit-order-form','v-reg-prod','v-edit-prod','v-edit-prod-form'].indexOf(id)!==-1){showToast('شما فقط دسترسی مشاهده آمار دارید','error');return}
+    document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+    var el=document.getElementById(id);if(el){el.classList.add('active');el.style.animation='none';el.offsetHeight;el.style.animation=''}
+    window.scrollTo(0,0)
+}
+function goHome(){showView('v-dash');renderDashboard()}
+function showToast(msg,type){
+    type=type||'success';var t=document.createElement('div');t.className='toast toast-'+type;t.textContent=msg;document.body.appendChild(t);
+    requestAnimationFrame(function(){t.classList.add('show')});setTimeout(function(){t.classList.remove('show');setTimeout(function(){t.remove()},400)},3000)
+}
+
+/* ===================== ORDER HELPERS ===================== */
+function getActiveOrderForMachine(m){var orders=getOrders();var active=orders.filter(function(o){return o.machineNumber==m&&o.status==='active'});if(!active.length)return null;active.sort(function(a,b){return b.timestamp-a.timestamp});return active[0]}
+function getOrderProduced(orderId){return getProductions().filter(function(p){return p.orderId===orderId}).reduce(function(s,p){return s+p.rollsProduced},0)}
+function getDeviClass(pct){var a=Math.abs(pct);if(a<DEVIATION_WARN)return'dev-ok';if(a<DEVIATION_ALERT)return'dev-warn';return'dev-alert'}
+function getDeviLabel(pct){var a=Math.abs(pct);if(a<DEVIATION_WARN)return'محدوده مجاز';if(a<DEVIATION_ALERT)return'هشدار';return'بحرانی'}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+    var orders=getOrders(),prods=getProductions();
+    var active=orders.filter(function(o){return o.status==='active'});
+    var machines=[];active.forEach(function(o){if(machines.indexOf(o.machineNumber)===-1)machines.push(o.machineNumber)});
+    var todayTotal=0,todayStr=todayJStr();
+    prods.forEach(function(p){if(p.date===todayStr)todayTotal+=p.rollsProduced});
+    var todayWeight=0;
+    prods.forEach(function(p){if(p.date===todayStr&&p.rollWeight)todayWeight+=p.rollWeight});
+    document.getElementById('quick-stats').innerHTML=
+        '<div class="quick-stat"><div class="quick-stat-val">'+active.length+'</div><div class="quick-stat-lbl">سفارش فعال</div></div>'+
+        '<div class="quick-stat"><div class="quick-stat-val">'+machines.length+'</div><div class="quick-stat-lbl">دستگاه فعال</div></div>'+
+        '<div class="quick-stat"><div class="quick-stat-val">'+todayTotal+'</div><div class="quick-stat-lbl">طاقه امروز</div></div>'+
+        '<div class="quick-stat"><div class="quick-stat-val">'+fmtNum(todayWeight)+'<span style="font-size:.7rem"> گرم</span></div><div class="quick-stat-lbl">وزن تولید امروز</div></div>'+
+        '<div class="quick-stat"><div class="quick-stat-val" style="font-size:.95rem;color:var(--text2)">'+fmtJDate(todayStr)+'</div><div class="quick-stat-lbl">تاریخ امروز</div></div>';
+    applyAccess();
+}
+
+/* ===================== NEW ORDER ===================== */
+function initNewOrder(){document.getElementById('no-date').value=todayJStr();document.getElementById('no-rollwt').value='';['no-machine','no-name','no-total','no-rolls','no-tpr','no-weight','no-width','no-length'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=''})}
+function calcRollWeight(){var tpr=parseFloat(document.getElementById('no-tpr').value)||0;var wt=parseFloat(document.getElementById('no-weight').value)||0;document.getElementById('no-rollwt').value=tpr&&wt?fmtNum(tpr*wt)+' گرم':''}
+function calcRollWeightEdit(){var tpr=parseFloat(document.getElementById('eo-tpr').value)||0;var wt=parseFloat(document.getElementById('eo-weight').value)||0;document.getElementById('eo-rollwt').value=tpr&&wt?fmtNum(tpr*wt)+' گرم':''}
+function submitNewOrder(){
+    var m=document.getElementById('no-machine').value,n=document.getElementById('no-name').value.trim(),t=document.getElementById('no-total').value,r=document.getElementById('no-rolls').value,tpr=document.getElementById('no-tpr').value,w=document.getElementById('no-width').value,l=document.getElementById('no-length').value,wt=document.getElementById('no-weight').value;
+    if(!m||!n||!t||!r||!tpr||!w||!l||!wt){showToast('لطفاً تمام فیلدها را پر کنید','error');return}
+    var existing=getActiveOrderForMachine(m);
+    if(existing){if(!confirm('دستگاه شماره '+m+' سفارش فعال «'+existing.name+'» دارد. سفارش قبلی تکمیل شود؟'))return;var orders=getOrders();var idx=orders.findIndex(function(o){return o.id===existing.id});if(idx>-1){orders[idx].status='completed';saveOrders(orders)}}
+    var order={id:genId(),name:n,machineNumber:parseInt(m),totalQuantity:parseInt(t),totalRolls:parseInt(r),towelsPerRoll:parseInt(tpr),width:parseInt(w),length:parseInt(l),weightPerPiece:parseFloat(wt),rollWeight:parseInt(tpr)*parseFloat(wt),date:todayJStr(),timestamp:Date.now(),status:'active'};
+    var orders=getOrders();orders.push(order);saveOrders(orders);
+    showToast('سفارش «'+n+'» با موفقیت ثبت شد');autoSave();
+    setTimeout(function(){goHome()},500)
+}
+
+/* ===================== EDIT ORDER ===================== */
+function renderEditOrderList(){
+    var orders=getOrders(),el=document.getElementById('edit-order-list');
+    if(!orders.length){el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>هنوز سفارشی ثبت نشده است.</p></div>';return}
+    var html='<div class="table-wrap"><table><thead><tr><th>ردیف</th><th>سفارش</th><th>دستگاه</th><th>کل</th><th>طاقه</th><th>حوله/طاقه</th><th>عرض</th><th>طول</th><th>وزن حوله</th><th>وزن طاقه</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>';
+    orders.forEach(function(o,i){
+        var st=o.status==='active'?'<span class="badge badge-active">جاری</span>':'<span class="badge badge-completed">تکمیل</span>';
+        html+='<tr><td>'+(i+1)+'</td><td>'+o.name+'</td><td>'+o.machineNumber+'</td><td>'+o.totalQuantity+'</td><td>'+o.totalRolls+'</td><td>'+(o.towelsPerRoll||'-')+'</td><td>'+o.width+'cm</td><td>'+o.length+'cm</td><td>'+fmtNum(o.weightPerPiece)+'g</td><td>'+fmtNum(o.rollWeight)+'g</td><td>'+fmtJDate(o.date)+'</td><td>'+st+'</td><td><button class="btn btn-secondary btn-sm" onclick="openEditOrder(\''+o.id+'\')">ویرایش</button></td></tr>'
+    });html+='</tbody></table></div>';el.innerHTML=html
+}
+function openEditOrder(id){
+    var o=getOrders().find(function(x){return x.id===id});if(!o)return;
+    document.getElementById('eo-id').value=o.id;document.getElementById('eo-machine').value=o.machineNumber;
+    document.getElementById('eo-name').value=o.name;document.getElementById('eo-total').value=o.totalQuantity;
+    document.getElementById('eo-rolls').value=o.totalRolls;document.getElementById('eo-tpr').value=o.towelsPerRoll||'';
+    document.getElementById('eo-weight').value=o.weightPerPiece;document.getElementById('eo-width').value=o.width;
+    document.getElementById('eo-length').value=o.length;document.getElementById('eo-rollwt').value=o.rollWeight?fmtNum(o.rollWeight)+' گرم':'';
+    document.getElementById('eo-date').value=fmtJDate(o.date);document.getElementById('eo-status').value=o.status;
+    showView('v-edit-order-form')
+}
+function submitEditOrder(){
+    var id=document.getElementById('eo-id').value,orders=getOrders(),idx=orders.findIndex(function(o){return o.id===id});
+    if(idx===-1){showToast('سفارش یافت نشد','error');return}
+    var m=document.getElementById('eo-machine').value,n=document.getElementById('eo-name').value.trim(),t=document.getElementById('eo-total').value,r=document.getElementById('eo-rolls').value,tpr=document.getElementById('eo-tpr').value,w=document.getElementById('eo-width').value,l=document.getElementById('eo-length').value,wt=document.getElementById('eo-weight').value,st=document.getElementById('eo-status').value;
+    if(!m||!n||!t||!r||!tpr||!w||!l||!wt){showToast('لطفاً تمام فیلدها را پر کنید','error');return}
+    orders[idx].machineNumber=parseInt(m);orders[idx].name=n;orders[idx].totalQuantity=parseInt(t);
+    orders[idx].totalRolls=parseInt(r);orders[idx].towelsPerRoll=parseInt(tpr);orders[idx].width=parseInt(w);
+    orders[idx].length=parseInt(l);orders[idx].weightPerPiece=parseFloat(wt);orders[idx].rollWeight=parseInt(tpr)*parseFloat(wt);orders[idx].status=st;
+    saveOrders(orders);showToast('سفارش «'+n+'» ویرایش شد');autoSave();setTimeout(function(){goHome()},500)
+}
+
+/* ===================== REGISTER PRODUCTION ===================== */
+var currentProdOrder=null;
+function initRegProd(){document.getElementById('rp-date').value=todayJStr();document.getElementById('rp-machine').value='';document.getElementById('rp-order-info').style.display='none';document.getElementById('rp-no-order').style.display='none';document.getElementById('rp-dev-panel').style.display='none';currentProdOrder=null}
+function lookupMachine(){
+    var m=document.getElementById('rp-machine').value;
+    var infoDiv=document.getElementById('rp-order-info'),noDiv=document.getElementById('rp-no-order');
+    document.getElementById('rp-dev-panel').style.display='none';
+    if(!m){infoDiv.style.display='none';noDiv.style.display='none';currentProdOrder=null;return}
+    var order=getActiveOrderForMachine(m);
+    if(!order){infoDiv.style.display='none';noDiv.style.display='block';currentProdOrder=null;return}
+    noDiv.style.display='none';infoDiv.style.display='block';currentProdOrder=order;
+    var produced=getOrderProduced(order.id),remaining=order.totalRolls-produced;
+    document.getElementById('rp-name').textContent=order.name;
+    document.getElementById('rp-width').textContent=order.width+' سانتی‌متر';
+    document.getElementById('rp-length').textContent=order.length+' سانتی‌متر';
+    document.getElementById('rp-weight').textContent=fmtNum(order.weightPerPiece)+' گرم';
+    document.getElementById('rp-tpr').textContent=fmtNum(order.towelsPerRoll)+' عدد';
+    document.getElementById('rp-rollwt').textContent=fmtNum(order.rollWeight)+' گرم';
+    document.getElementById('rp-total-rolls').textContent=order.totalRolls+' طاقه';
+    document.getElementById('rp-produced').textContent=produced+' طاقه';
+    document.getElementById('rp-remaining').textContent=remaining+' طاقه';
+    document.getElementById('rp-new-rolls').value='';document.getElementById('rp-roll-weight').value='';
+    document.getElementById('rp-towels-in-roll').value='';document.getElementById('rp-new-rolls').max=remaining;
+    document.getElementById('rp-towels-in-roll').value=order.towelsPerRoll||'';
+}
+function calcProdDeviation(){
+    if(!currentProdOrder)return;
+    var rw=parseFloat(document.getElementById('rp-roll-weight').value)||0;
+    var tc=parseInt(document.getElementById('rp-towels-in-roll').value)||0;
+    var panel=document.getElementById('rp-dev-panel');
+    if(!rw||!tc){panel.style.display='none';return}
+    panel.style.display='block';
+    var actual=rw/tc,std=currentProdOrder.weightPerPiece,dev=actual-std,pct=(dev/std)*100;
+    document.getElementById('rp-actual-wt').textContent=actual.toFixed(1)+' گرم';
+    document.getElementById('rp-std-wt').textContent=fmtNum(std)+' گرم';
+    var valEl=document.getElementById('rp-dev-val'),pctEl=document.getElementById('rp-dev-pct'),alertEl=document.getElementById('rp-dev-alert');
+    valEl.textContent=(dev>=0?'+':'')+dev.toFixed(1)+' گرم';valEl.className=getDeviClass(pct);
+    pctEl.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';pctEl.className=getDeviClass(pct);
+    var a=Math.abs(pct);
+    if(a>=DEVIATION_ALERT){alertEl.innerHTML='<div class="alert-box alert-danger">⚠ انحراف وزن بحرانی ('+pct.toFixed(1)+'%) — نیاز به بررسی فوری</div>'}
+    else if(a>=DEVIATION_WARN){alertEl.innerHTML='<div class="alert-box alert-warn">⚠ انحراف وزن در محدوده هشدار ('+pct.toFixed(1)+'%)</div>'}
+    else{alertEl.innerHTML='<div class="alert-box alert-ok">✓ انحراف وزن در محدوده مجاز</div>'}
+}
+function submitProduction(){
+    if(!currentProdOrder){showToast('ابتدا شماره دستگاه معتبر وارد کنید','error');return}
+    var newRolls=parseInt(document.getElementById('rp-new-rolls').value);
+    var rw=parseFloat(document.getElementById('rp-roll-weight').value);
+    var tc=parseInt(document.getElementById('rp-towels-in-roll').value);
+    if(!newRolls||newRolls<1){showToast('تعداد طاقه جدید را وارد کنید','error');return}
+    if(!rw||rw<=0){showToast('وزن طاقه را وارد کنید','error');return}
+    if(!tc||tc<1){showToast('تعداد حوله در طاقه را وارد کنید','error');return}
+    var produced=getOrderProduced(currentProdOrder.id),remaining=currentProdOrder.totalRolls-produced;
+    if(newRolls>remaining){showToast('تعداد طاقه وارد شده ('+newRolls+') بیشتر از مانده سفارش ('+remaining+') است!','error');return}
+    var actualWt=rw/tc,dev=actualWt-currentProdOrder.weightPerPiece,devPct=(dev/currentProdOrder.weightPerPiece)*100;
+    var prod={id:genId(),orderId:currentProdOrder.id,machineNumber:currentProdOrder.machineNumber,date:todayJStr(),rollsProduced:newRolls,rollWeight:rw,towelsInRoll:tc,actualWeightPerPiece:actualWt,weightDeviation:dev,weightDeviationPercent:devPct,timestamp:Date.now()};
+    var prods=getProductions();prods.push(prod);saveProductions(prods);
+    var newProduced=produced+newRolls;
+    if(newProduced>=currentProdOrder.totalRolls){var orders=getOrders();var idx=orders.findIndex(function(o){return o.id===currentProdOrder.id});if(idx>-1){orders[idx].status='completed';saveOrders(orders)}showToast('تولید ثبت شد. سفارش «'+currentProdOrder.name+'» تکمیل شد!')}
+    else{showToast(newRolls+' طاقه ثبت شد. مانده: '+(currentProdOrder.totalRolls-newProduced)+' طاقه')}
+    autoSave();setTimeout(function(){goHome()},600)
+}
+
+/* ===================== EDIT PRODUCTION ===================== */
+function searchProduction(){
+    var m=document.getElementById('ep-machine').value,n=document.getElementById('ep-name').value.trim().toLowerCase();
+    var prods=getProductions(),orders=getOrders();
+    var results=prods.filter(function(p){var match=true;if(m&&p.machineNumber!=m)match=false;if(n){var o=orders.find(function(x){return x.id===p.orderId});if(!o||o.name.toLowerCase().indexOf(n)===-1)match=false}return match});
+    var el=document.getElementById('ep-results');
+    if(!results.length){el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>رکوردی یافت نشد.</p></div>';return}
+    var html='<div class="table-wrap"><table><thead><tr><th>ردیف</th><th>تاریخ</th><th>دستگاه</th><th>سفارش</th><th>طاقه</th><th>وزن طاقه</th><th>حوله</th><th>وزن حوله</th><th>انحراف</th><th>عملیات</th></tr></thead><tbody>';
+    results.sort(function(a,b){return b.timestamp-a.timestamp});
+    results.forEach(function(p,i){
+        var o=orders.find(function(x){return x.id===p.orderId}),oName=o?o.name:'حذف شده';
+        var devClass=p.weightDeviationPercent!=null?getDeviClass(p.weightDeviationPercent):'';
+        var devText=p.weightDeviationPercent!=null?(p.weightDeviationPercent>=0?'+':'')+p.weightDeviationPercent.toFixed(1)+'%':'-';
+        html+='<tr><td>'+(i+1)+'</td><td>'+fmtJDate(p.date)+'</td><td>'+p.machineNumber+'</td><td>'+oName+'</td><td>'+p.rollsProduced+'</td><td>'+fmtNum(p.rollWeight)+'g</td><td>'+(p.towelsInRoll||'-')+'</td><td>'+(p.actualWeightPerPiece?p.actualWeightPerPiece.toFixed(1)+'g':'-')+'</td><td class="'+devClass+'">'+devText+'</td><td><button class="btn btn-secondary btn-sm" onclick="openEditProd(\''+p.id+'\')">ویرایش</button></td></tr>'
+    });html+='</tbody></table></div>';el.innerHTML=html
+}
+function openEditProd(id){
+    var p=getProductions().find(function(x){return x.id===id});if(!p)return;
+    var o=getOrders().find(function(x){return x.id===p.orderId});
+    document.getElementById('epf-id').value=p.id;document.getElementById('epf-order-id').value=p.orderId;
+    document.getElementById('epf-machine').value=p.machineNumber;document.getElementById('epf-order-name').value=o?o.name:'-';
+    document.getElementById('epf-date').value=fmtJDate(p.date);document.getElementById('epf-rolls').value=p.rollsProduced;
+    document.getElementById('epf-rollwt').value=p.rollWeight||'';document.getElementById('epf-towels').value=p.towelsInRoll||'';
+    document.getElementById('epf-dev-panel').style.display='none';
+    showView('v-edit-prod-form');if(p.rollWeight&&p.towelsInRoll)calcEditProdDev();
+}
+function calcEditProdDev(){
+    var rw=parseFloat(document.getElementById('epf-rollwt').value)||0,tc=parseInt(document.getElementById('epf-towels').value)||0;
+    var panel=document.getElementById('epf-dev-panel');
+    if(!rw||!tc){panel.style.display='none';return}
+    var orderId=document.getElementById('epf-order-id').value,order=getOrders().find(function(o){return o.id===orderId});
+    if(!order){panel.style.display='none';return}
+    panel.style.display='block';
+    var actual=rw/tc,std=order.weightPerPiece,dev=actual-std,pct=(dev/std)*100;
+    document.getElementById('epf-actual-wt').textContent=actual.toFixed(1)+' گرم';
+    var valEl=document.getElementById('epf-dev-val'),pctEl=document.getElementById('epf-dev-pct'),alertEl=document.getElementById('epf-dev-alert');
+    valEl.textContent=(dev>=0?'+':'')+dev.toFixed(1)+' گرم';valEl.className=getDeviClass(pct);
+    pctEl.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';pctEl.className=getDeviClass(pct);
+    var a=Math.abs(pct);
+    if(a>=DEVIATION_ALERT){alertEl.innerHTML='<div class="alert-box alert-danger">⚠ انحراف بحرانی</div>'}
+    else if(a>=DEVIATION_WARN){alertEl.innerHTML='<div class="alert-box alert-warn">⚠ انحراف در محدوده هشدار</div>'}
+    else{alertEl.innerHTML='<div class="alert-box alert-ok">✓ مجاز</div>'}
+}
+function submitEditProduction(){
+    var id=document.getElementById('epf-id').value,newRolls=parseInt(document.getElementById('epf-rolls').value);
+    var rw=parseFloat(document.getElementById('epf-rollwt').value),tc=parseInt(document.getElementById('epf-towels').value);
+    if(isNaN(newRolls)||newRolls<0){showToast('تعداد طاقه معتبر وارد کنید','error');return}
+    if(!rw||rw<=0){showToast('وزن طاقه را وارد کنید','error');return}
+    if(!tc||tc<1){showToast('تعداد حوله را وارد کنید','error');return}
+    var prods=getProductions(),idx=prods.findIndex(function(p){return p.id===id});
+    if(idx===-1){showToast('رکورد یافت نشد','error');return}
+    var orderId=prods[idx].orderId,actualWt=rw/tc;
+    var order=getOrders().find(function(o){return o.id===orderId});
+    var std=order?order.weightPerPiece:actualWt,dev=actualWt-std,devPct=(dev/std)*100;
+    prods[idx].rollsProduced=newRolls;prods[idx].rollWeight=rw;prods[idx].towelsInRoll=tc;
+    prods[idx].actualWeightPerPiece=actualWt;prods[idx].weightDeviation=dev;prods[idx].weightDeviationPercent=devPct;
+    saveProductions(prods);
+    if(order){var orders=getOrders(),oidx=orders.findIndex(function(o){return o.id===orderId});if(oidx>-1){orders[oidx].status=getOrderProduced(orderId)>=order.totalRolls?'completed':'active';saveOrders(orders)}}
+    showToast('رکورد تولید ویرایش شد');autoSave();setTimeout(function(){goHome()},500)
+}
+
+/* ===================== CURRENT STATS ===================== */
+var csCharts=[];
+function destroyCs(){csCharts.forEach(function(c){c.destroy()});csCharts=[]}
+function showCurrentStats(){
+    destroyCs();var m=document.getElementById('cs-machine').value,el=document.getElementById('cs-content');
+    if(!m){el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>شماره دستگاه را وارد کنید.</p></div>';return}
+    var order=getActiveOrderForMachine(m);
+    if(!order){el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>سفارش فعالی برای دستگاه '+m+' یافت نشد.</p></div>';return}
+    var produced=getOrderProduced(order.id),remaining=order.totalRolls-produced,daysElapsed=Math.max(1,Math.floor((Date.now()-order.timestamp)/86400000));
+    var avgPerDay=(produced/daysElapsed).toFixed(1),estDays=parseFloat(avgPerDay)>0?Math.ceil(remaining/parseFloat(avgPerDay)):'-';
+    var pct=order.totalRolls>0?Math.round((produced/order.totalRolls)*100):0;
+    var prods=getProductions().filter(function(p){return p.orderId===order.id});
+    prods.sort(function(a,b){return a.timestamp-b.timestamp});
+
+    // Weight deviation stats
+    var wtProds=prods.filter(function(p){return p.weightDeviationPercent!=null});
+    var avgDev=0,minDev=0,maxDev=0,devAlertCount=0,devWarnCount=0;
+    if(wtProds.length){
+        var devs=wtProds.map(function(p){return p.weightDeviationPercent});
+        avgDev=devs.reduce(function(a,b){return a+b},0)/devs.length;
+        minDev=Math.min.apply(null,devs);maxDev=Math.max.apply(null,devs);
+        devAlertCount=devs.filter(function(d){return Math.abs(d)>=DEVIATION_ALERT}).length;
+        devWarnCount=devs.filter(function(d){return Math.abs(d)>=DEVIATION_WARN&&Math.abs(d)<DEVIATION_ALERT}).length;
+    }
+
+    var html='';
+    // Order info
+    html+='<div class="info-box">';
+    html+='<div class="info-row"><span class="info-key">نام سفارش</span><span class="info-val">'+order.name+'</span></div>';
+    html+='<div class="info-row"><span class="info-key">شماره دستگاه</span><span class="info-val">'+order.machineNumber+'</span></div>';
+    html+='<div class="info-row"><span class="info-key">ابعاد</span><span class="info-val">'+order.width+' × '+order.length+' cm</span></div>';
+    html+='<div class="info-row"><span class="info-key">وزن استاندارد حوله</span><span class="info-val">'+fmtNum(order.weightPerPiece)+' گرم</span></div>';
+    html+='<div class="info-row"><span class="info-key">حوله در طاقه</span><span class="info-val">'+fmtNum(order.towelsPerRoll)+'</span></div>';
+    html+='<div class="info-row"><span class="info-key">وزن استاندارد طاقه</span><span class="info-val">'+fmtNum(order.rollWeight)+' گرم</span></div>';
+    html+='<div class="info-row"><span class="info-key">تاریخ شروع</span><span class="info-val">'+fmtJDate(order.date)+'</span></div>';
+    html+='<div class="info-row"><span class="info-key">پیشرفت</span><span class="info-val">'+pct+'%</span></div>';
+    html+='<div class="progress-bg"><div class="progress-fill" style="width:'+pct+'%"></div></div>';
+    html+='</div>';
+
+    // Weight deviation alert
+    if(devAlertCount>0){html+='<div class="alert-box alert-danger" style="margin-bottom:16px">⚠ '+devAlertCount+' رکورد با انحراف بحرانی وزن شناسایی شد (بالای '+DEVIATION_ALERT+'%)</div>'}
+    else if(devWarnCount>0){html+='<div class="alert-box alert-warn" style="margin-bottom:16px">⚠ '+devWarnCount+' رکورد با انحراف وزن هشدار (بین '+DEVIATION_WARN+' تا '+DEVIATION_ALERT+'%)</div>'}
+    else if(wtProds.length){html+='<div class="alert-box alert-ok" style="margin-bottom:16px">✓ تمام رکوردها در محدوده مجاز وزنی</div>'}
+
+    // Stats grid
+    html+='<div class="stats-grid">';
+    html+='<div class="stat-card"><div class="stat-val s-accent">'+order.totalRolls+'</div><div class="stat-lbl">کل طاقه</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-green">'+produced+'</div><div class="stat-lbl">بافته شده</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-rose">'+remaining+'</div><div class="stat-lbl">مانده</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-blue">'+daysElapsed+'</div><div class="stat-lbl">روز سپری شده</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-cyan">'+avgPerDay+'</div><div class="stat-lbl">میانگین روزانه</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-purple">'+estDays+'</div><div class="stat-lbl">روز تا تکمیل</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-accent">'+fmtNum(order.totalQuantity)+'</div><div class="stat-lbl">کل سفارش</div></div>';
+    html+='<div class="stat-card"><div class="stat-val s-green">'+fmtNum(Math.round(order.totalQuantity*(pct/100)))+'</div><div class="stat-lbl">تولید شده</div></div>';
+    html+='</div>';
+
+    // Weight deviation stats
+    if(wtProds.length){
+        html+='<div class="stats-grid" style="margin-top:6px">';
+        html+='<div class="stat-card"><div class="stat-val '+getDeviClass(avgDev)+'">'+(avgDev>=0?'+':'')+avgDev.toFixed(2)+'%</div><div class="stat-lbl">میانگین انحراف</div></div>';
+        html+='<div class="stat-card"><div class="stat-val '+getDeviClass(minDev)+'">'+(minDev>=0?'+':'')+minDev.toFixed(2)+'%</div><div class="stat-lbl">کمترین انحراف</div></div>';
+        html+='<div class="stat-card"><div class="stat-val '+getDeviClass(maxDev)+'">'+(maxDev>=0?'+':'')+maxDev.toFixed(2)+'%</div><div class="stat-lbl">بیشترین انحراف</div></div>';
+        html+='<div class="stat-card"><div class="stat-val '+(devAlertCount?'s-rose':'s-green')+'">'+devAlertCount+'</div><div class="stat-lbl">رکورد بحرانی</div></div>';
+        html+='</div>';
+    }
+
+    // Charts
+    html+='<div class="charts-grid">';
+    html+='<div class="chart-card"><div class="chart-title">پیشرفت تولید</div><div class="chart-wrap"><canvas id="cs-c1"></canvas></div></div>';
+    html+='<div class="chart-card"><div class="chart-title">تولید روزانه (طاقه)</div><div class="chart-wrap"><canvas id="cs-c2"></canvas></div></div>';
+    html+='<div class="chart-card"><div class="chart-title">انحراف وزن (%)</div><div class="chart-wrap"><canvas id="cs-c4"></canvas></div></div>';
+    html+='<div class="chart-card"><div class="chart-title">وزن واقعی حوله</div><div class="chart-wrap"><canvas id="cs-c5"></canvas></div></div>';
+    html+='<div class="chart-card full"><div class="chart-title">تولید تجمعی (طاقه)</div><div class="chart-wrap"><canvas id="cs-c3"></canvas></div></div>';
+    html+='</div>';
+    el.innerHTML=html;
+
+    // Build data
+    var dailyMap={};
+    prods.forEach(function(p){if(!dailyMap[p.date])dailyMap[p.date]={rolls:0,deviations:[],weights:[]};dailyMap[p.date].rolls+=p.rollsProduced;if(p.weightDeviationPercent!=null)dailyMap[p.date].deviations.push(p.weightDeviationPercent);if(p.actualWeightPerPiece)dailyMap[p.date].weights.push(p.actualWeightPerPiece)});
+    var labels=Object.keys(dailyMap).sort();
+    var dailyData=labels.map(function(d){return dailyMap[d].rolls});
+    var cumulData=[],cum=0;dailyData.forEach(function(d){cum+=d;cumulData.push(cum)});
+    var devData=labels.map(function(d){var arr=dailyMap[d].deviations;return arr.length?arr.reduce(function(a,b){return a+b},0)/arr.length:null});
+    var wtData=labels.map(function(d){var arr=dailyMap[d].weights;return arr.length?arr.reduce(function(a,b){return a+b},0)/arr.length:null});
+
+    // Progress doughnut
+    csCharts.push(new Chart(document.getElementById('cs-c1'),{type:'doughnut',data:{labels:['بافته شده','مانده'],datasets:[{data:[produced,remaining],backgroundColor:['#10b981','#252740'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#a0a4b8',font:{family:'Vazirmatn',size:11}}}}}}));
+    // Daily bar
+    csCharts.push(new Chart(document.getElementById('cs-c2'),{type:'bar',data:{labels:fmtLbl(labels),datasets:[{label:'طاقه',data:dailyData,backgroundColor:'rgba(59,130,246,.6)',borderRadius:6,borderSkipped:false}]},options:barOpts()}));
+    // Cumulative line
+    csCharts.push(new Chart(document.getElementById('cs-c3'),{type:'line',data:{labels:fmtLbl(labels),datasets:[{label:'تولید تجمعی',data:cumulData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:.4,pointBackgroundColor:'#f59e0b',pointRadius:4},{label:'هدف',data:labels.map(function(){return order.totalRolls}),borderColor:'rgba(239,68,68,.4)',borderDash:[5,5],pointRadius:0,fill:false}]},options:lineOpts()}));
+    // Deviation chart
+    if(wtProds.length){
+        csCharts.push(new Chart(document.getElementById('cs-c4'),{type:'bar',data:{labels:fmtLbl(labels),datasets:[{label:'انحراف %',data:devData,backgroundColor:devData.map(function(d){if(d==null)return'rgba(37,39,64,.6)';var a=Math.abs(d);if(a>=DEVIATION_ALERT)return'rgba(244,63,94,.7)';if(a>=DEVIATION_WARN)return'rgba(245,158,11,.7)';return'rgba(16,185,129,.7)'}),borderRadius:6,borderSkipped:false}]},options:Object.assign(barOpts(),{plugins:{legend:{display:false},annotation:{annotations:{warnLine:{type:'line',yMin:DEVIATION_WARN,yMax:DEVIATION_WARN,borderColor:'rgba(245,158,11,.5)',borderDash:[4,4]},alertLine:{type:'line',yMin:DEVIATION_ALERT,yMax:DEVIATION_ALERT,borderColor:'rgba(244,63,94,.5)',borderDash:[4,4]}}}}})}));
+        csCharts.push(new Chart(document.getElementById('cs-c5'),{type:'line',data:{labels:fmtLbl(labels),datasets:[{label:'وزن واقعی',data:wtData,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.1)',fill:true,tension:.4,pointBackgroundColor:'#8b5cf6',pointRadius:4},{label:'استاندارد',data:labels.map(function(){return order.weightPerPiece}),borderColor:'rgba(16,185,129,.5)',borderDash:[5,5],pointRadius:0,fill:false}]},options:lineOpts()}));
+    }
+}
+
+/* ===================== PAST STATS ===================== */
+var psCharts=[];
+function destroyPs(){psCharts.forEach(function(c){c.destroy()});psCharts=[]}
+function searchPastStats(){
+    destroyPs();var n=document.getElementById('ps-name').value.trim().toLowerCase(),m=document.getElementById('ps-machine').value;
+    var orders=getOrders().filter(function(o){var match=true;if(n&&o.name.toLowerCase().indexOf(n)===-1)match=false;if(m&&o.machineNumber!=m)match=false;return match});
+    var el=document.getElementById('ps-results');
+    if(!orders.length){el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>سفارشی یافت نشد.</p></div>';return}
+    var html='';
+    orders.forEach(function(order){
+        var produced=getOrderProduced(order.id),remaining=Math.max(0,order.totalRolls-produced);
+        var daysElapsed=Math.max(1,Math.floor((Date.now()-order.timestamp)/86400000));
+        var avgPerDay=(produced/daysElapsed).toFixed(1),estDays=remaining>0&&parseFloat(avgPerDay)>0?Math.ceil(remaining/parseFloat(avgPerDay)):'تکمیل';
+        var pct=order.totalRolls>0?Math.round((produced/order.totalRolls)*100):0;
+        var st=order.status==='active'?'<span class="badge badge-active">جاری</span>':'<span class="badge badge-completed">تکمیل</span>';
+        var prods=getProductions().filter(function(p){return p.orderId===order.id});
+        var wtProds=prods.filter(function(p){return p.weightDeviationPercent!=null});
+        var avgDev=0,minDev=0,maxDev=0,devAlertC=0,devWarnC=0;
+        if(wtProds.length){var devs=wtProds.map(function(p){return p.weightDeviationPercent});avgDev=devs.reduce(function(a,b){return a+b},0)/devs.length;minDev=Math.min.apply(null,devs);maxDev=Math.max.apply(null,devs);devAlertC=devs.filter(function(d){return Math.abs(d)>=DEVIATION_ALERT}).length;devWarnC=devs.filter(function(d){return Math.abs(d)>=DEVIATION_WARN&&Math.abs(d)<DEVIATION_ALERT}).length}
+
+        html+='<div style="margin-bottom:30px">';
+        html+='<div class="info-box">';
+        html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="font-size:1.05rem;font-weight:700">'+order.name+' (دستگاه '+order.machineNumber+')</h3>'+st+'</div>';
+        html+='<div class="info-row"><span class="info-key">ابعاد</span><span class="info-val">'+order.width+' × '+order.length+' cm</span></div>';
+        html+='<div class="info-row"><span class="info-key">وزن استاندارد حوله</span><span class="info-val">'+fmtNum(order.weightPerPiece)+' گرم</span></div>';
+        html+='<div class="info-row"><span class="info-key">حوله در طاقه</span><span class="info-val">'+fmtNum(order.towelsPerRoll)+'</span></div>';
+        html+='<div class="info-row"><span class="info-key">وزن طاقه</span><span class="info-val">'+fmtNum(order.rollWeight)+' گرم</span></div>';
+        html+='<div class="info-row"><span class="info-key">تاریخ ثبت</span><span class="info-val">'+fmtJDate(order.date)+'</span></div>';
+        html+='<div class="info-row"><span class="info-key">کل سفارش / طاقه</span><span class="info-val">'+fmtNum(order.totalQuantity)+' / '+order.totalRolls+'</span></div>';
+        html+='<div class="info-row"><span class="info-key">بافته / مانده</span><span class="info-val"><span class="s-green">'+produced+'</span> / <span class="s-rose">'+remaining+'</span></span></div>';
+        html+='<div class="info-row"><span class="info-key">روز / میانگین</span><span class="info-val">'+daysElapsed+' روز / '+avgPerDay+' طاقه/روز</span></div>';
+        html+='<div class="info-row"><span class="info-key">تکمیل تخمینی</span><span class="info-val s-purple">'+estDays+(estDays!=='تکمیل'?' روز':'')+'</span></div>';
+        html+='<div class="info-row"><span class="info-key">پیشرفت</span><span class="info-val">'+pct+'%</span></div>';
+        html+='<div class="progress-bg"><div class="progress-fill" style="width:'+pct+'%"></div></div>';
+        html+='</div>';
+
+        if(wtProds.length){
+            if(devAlertC>0)html+='<div class="alert-box alert-danger" style="margin-bottom:12px">⚠ '+devAlertC+' رکورد انحراف بحرانی وزن</div>';
+            else if(devWarnC>0)html+='<div class="alert-box alert-warn" style="margin-bottom:12px">⚠ '+devWarnC+' رکورد هشدار وزنی</div>';
+            else html+='<div class="alert-box alert-ok" style="margin-bottom:12px">✓ وزن در محدوده مجاز</div>';
+            html+='<div class="stats-grid">';
+            html+='<div class="stat-card"><div class="stat-val '+getDeviClass(avgDev)+'">'+(avgDev>=0?'+':'')+avgDev.toFixed(2)+'%</div><div class="stat-lbl">میانگین انحراف</div></div>';
+            html+='<div class="stat-card"><div class="stat-val '+getDeviClass(minDev)+'">'+(minDev>=0?'+':'')+minDev.toFixed(2)+'%</div><div class="stat-lbl">کمترین</div></div>';
+            html+='<div class="stat-card"><div class="stat-val '+getDeviClass(maxDev)+'">'+(maxDev>=0?'+':'')+maxDev.toFixed(2)+'%</div><div class="stat-lbl">بیشترین</div></div>';
+            html+='<div class="stat-card"><div class="stat-val '+(devAlertC?'s-rose':'s-green')+'">'+devAlertC+'</div><div class="stat-lbl">بحرانی</div></div>';
+            html+='</div>';
+        }
+
+        var cid='ps-'+order.id.replace(/[^a-zA-Z0-9]/g,'');
+        html+='<div class="charts-grid">';
+        html+='<div class="chart-card"><div class="chart-title">پیشرفت</div><div class="chart-wrap"><canvas id="'+cid+'-p"></canvas></div></div>';
+        html+='<div class="chart-card"><div class="chart-title">تولید روزانه</div><div class="chart-wrap"><canvas id="'+cid+'-d"></canvas></div></div>';
+        if(wtProds.length){html+='<div class="chart-card"><div class="chart-title">انحراف وزن</div><div class="chart-wrap"><canvas id="'+cid+'-w"></canvas></div></div>'}
+        html+='<div class="chart-card full"><div class="chart-title">تولید تجمعی</div><div class="chart-wrap"><canvas id="'+cid+'-c"></canvas></div></div>';
+        html+='</div></div>';
+    });
+    el.innerHTML=html;
+
+    orders.forEach(function(order){
+        var produced=getOrderProduced(order.id),remaining=Math.max(0,order.totalRolls-produced);
+        var prods=getProductions().filter(function(p){return p.orderId===order.id});
+        prods.sort(function(a,b){return a.timestamp-b.timestamp});
+        var dailyMap={};
+        prods.forEach(function(p){if(!dailyMap[p.date])dailyMap[p.date]={rolls:0,deviations:[]};dailyMap[p.date].rolls+=p.rollsProduced;if(p.weightDeviationPercent!=null)dailyMap[p.date].deviations.push(p.weightDeviationPercent)});
+        var labels=Object.keys(dailyMap).sort();
+        var dailyData=labels.map(function(d){return dailyMap[d].rolls});
+        var cumulData=[],cum=0;dailyData.forEach(function(d){cum+=d;cumulData.push(cum)});
+        var devData=labels.map(function(d){var arr=dailyMap[d].deviations;return arr.length?arr.reduce(function(a,b){return a+b},0)/arr.length:null});
+        var cid='ps-'+order.id.replace(/[^a-zA-Z0-9]/g,'');
+        psCharts.push(new Chart(document.getElementById(cid+'-p'),{type:'doughnut',data:{labels:['بافته شده','مانده'],datasets:[{data:[produced,remaining],backgroundColor:['#10b981','#252740'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#a0a4b8',font:{family:'Vazirmatn',size:10}}}}}}));
+        psCharts.push(new Chart(document.getElementById(cid+'-d'),{type:'bar',data:{labels:fmtLbl(labels),datasets:[{label:'طاقه',data:dailyData,backgroundColor:'rgba(59,130,246,.6)',borderRadius:6,borderSkipped:false}]},options:barOpts()}));
+        psCharts.push(new Chart(document.getElementById(cid+'-c'),{type:'line',data:{labels:fmtLbl(labels),datasets:[{label:'تجمعی',data:cumulData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:.4,pointBackgroundColor:'#f59e0b',pointRadius:4},{label:'هدف',data:labels.map(function(){return order.totalRolls}),borderColor:'rgba(239,68,68,.4)',borderDash:[5,5],pointRadius:0,fill:false}]},options:lineOpts()}));
+        var wEl=document.getElementById(cid+'-w');
+        if(wEl){psCharts.push(new Chart(wEl,{type:'bar',data:{labels:fmtLbl(labels),datasets:[{label:'انحراف %',data:devData,backgroundColor:devData.map(function(d){if(d==null)return'rgba(37,39,64,.6)';var a=Math.abs(d);if(a>=DEVIATION_ALERT)return'rgba(244,63,94,.7)';if(a>=DEVIATION_WARN)return'rgba(245,158,11,.7)';return'rgba(16,185,129,.7)'}),borderRadius:6,borderSkipped:false}]},options:barOpts()}))}
+    })
+}
+
+/* ===================== CHART HELPERS ===================== */
+function fmtLbl(labels){return labels.map(function(l){var p=l.split('/');return parseInt(p[2])+'/'+(parseInt(p[1])<10?'0':'')+parseInt(p[1])})}
+function barOpts(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6b7280',font:{family:'Vazirmatn',size:9},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6b7280',font:{family:'Vazirmatn',size:10}},beginAtZero:true}}}}
+function lineOpts(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{color:'#a0a4b8',font:{family:'Vazirmatn',size:10},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6b7280',font:{family:'Vazirmatn',size:9},maxRotation:45}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6b7280',font:{family:'Vazirmatn',size:10}},beginAtZero:true}}}}
+
+/* ===================== INIT ===================== */
+document.addEventListener('DOMContentLoaded',function(){
+    var savedRole=sessionStorage.getItem('pm_role');
+    if(savedRole==='admin'||savedRole==='viewer'){userRole=savedRole;document.getElementById('login-overlay').style.display='none';document.getElementById('app-root').style.display='block';applyAccess();renderDashboard();initFileStorage()}
+    else{document.getElementById('login-pwd').focus()}
+    var observer=new MutationObserver(function(muts){
+        muts.forEach(function(m){
+            if(!m.target.classList.contains('active'))return;
+            var id=m.target.id;
+            if(id==='v-new-order')initNewOrder();
+            if(id==='v-edit-order')renderEditOrderList();
+            if(id==='v-reg-prod')initRegProd();
+            if(id==='v-edit-prod'){document.getElementById('ep-results').innerHTML='';document.getElementById('ep-machine').value='';document.getElementById('ep-name').value=''}
+            if(id==='v-cur-stats'){document.getElementById('cs-content').innerHTML='';document.getElementById('cs-machine').value='';destroyCs()}
+            if(id==='v-past-stats'){document.getElementById('ps-results').innerHTML='';document.getElementById('ps-name').value='';document.getElementById('ps-machine').value='';destroyPs()}
+            if(id==='v-dash')renderDashboard();
+        })
+    });
+    document.querySelectorAll('.view').forEach(function(v){observer.observe(v,{attributes:true,attributeFilter:['class']})});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'){var a=document.querySelector('.view.active');if(a&&a.id!=='v-dash')goHome()}});
+    // Logout with double ESC
+    document.addEventListener('keydown',function(e){
+        if(e.key==='Escape'&&document.querySelector('.view.active')&&document.querySelector('.view.active').id==='v-dash'){
+            if(confirm('آیا می‌خواهید از سیستم خارج شوید؟')){sessionStorage.removeItem('pm_role');location.reload()}
+        }
+    });
+});
+</script>
+</body>
+</html>
